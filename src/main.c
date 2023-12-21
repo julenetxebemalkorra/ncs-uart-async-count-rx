@@ -4,13 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr.h>
-#include <device.h>
-#include <devicetree.h>
-#include <sys/ring_buffer.h>
-#include <drivers/gpio.h>
-#include <drivers/uart.h>
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/devicetree.h>
+#include <zephyr/sys/ring_buffer.h>
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/uart.h>
 #include <string.h>
+
 
 #define UART_BUF_SIZE		16
 #define UART_TX_TIMEOUT_MS	100
@@ -37,7 +38,8 @@ uint8_t *uart_buf_next = uart_double_buffer[1];
 // UART RX message queue
 K_MSGQ_DEFINE(uart_rx_msgq, sizeof(struct uart_msg_queue_item), UART_RX_MSG_QUEUE_SIZE, 4);
 
-static const struct device *dev_uart;
+/* Get the device pointer of the UART hardware */
+static const struct device *dev_uart= DEVICE_DT_GET(DT_NODELABEL(uart0));;
 
 static int uart_tx_get_from_queue(void)
 {
@@ -96,12 +98,20 @@ void app_uart_async_callback(const struct device *uart_dev,
 
 static void app_uart_init(void)
 {
-	dev_uart = device_get_binding("UART_0");
-	if (dev_uart == NULL) {
+	/*
+	dev_uart = device_get_binding("uart0");
+	if (dev_uart != NULL) {
 		printk("Failed to get UART binding\n");
 		return;
 	}
+	*/
 
+	//STEP 4.2 - Verify that the UART device is ready 
+	if (!device_is_ready(dev_uart)){
+		printk("UART device not ready\r\n");
+		return 1 ;
+	}
+ 
 	uart_callback_set(dev_uart, app_uart_async_callback, NULL);
 	uart_rx_enable(dev_uart, uart_double_buffer[0], UART_BUF_SIZE, UART_RX_TIMEOUT_MS);
 }
